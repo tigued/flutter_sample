@@ -26,23 +26,41 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text("Menu Bar"),
-        ),
-        body: Center(
-            child: Card(
-                margin: EdgeInsets.all(10), 
-                child: Container(  //<-- 追加箇所
-                    padding: EdgeInsets.all(10), //<-- 追加箇所
-                    child:Row(
-                        children: [
-                        Checkbox(onChanged: null, value: false),
-                        Text("TODO 1"),
-                        ],
-                    ),
+      appBar: AppBar(
+        title: Text("Menu Bar"),
+      ),
+      body: Center(
+        child: ListView( //<--追加箇所
+          children: [ //<--追加箇所
+            // <--　ここから1枚目のカード
+            Card(
+              margin: EdgeInsets.all(10),
+              child: Container(
+                padding: EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Checkbox(onChanged: null, value: false),
+                    Text("TODO 1"),
+                  ],
                 ),
+              ),
             ),
+            // <--　ここから2枚目のカード
+            Card(
+              margin: EdgeInsets.all(10),
+              child: Container(
+                padding: EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Checkbox(onChanged: null, value: false),
+                    Text("TODO 2"),
+                  ],
+                ),
+              ),
+            ),
+          ]
         ),
+      ),
     );
   }
 }
