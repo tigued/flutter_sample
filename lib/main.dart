@@ -30,8 +30,19 @@ class MyHomePage extends StatelessWidget {
           title: Text("Menu Bar"),
         ),
         body: Center(
-          child: Text("ABC"),
-        )
+            child: Card(
+                margin: EdgeInsets.all(10), 
+                child: Container(  //<-- 追加箇所
+                    padding: EdgeInsets.all(10), //<-- 追加箇所
+                    child:Row(
+                        children: [
+                        Checkbox(onChanged: null, value: false),
+                        Text("TODO 1"),
+                        ],
+                    ),
+                ),
+            ),
+        ),
     );
   }
 }
