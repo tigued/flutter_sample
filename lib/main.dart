@@ -31,7 +31,6 @@ class MyHomePage extends StatelessWidget {
       ),
       body: Center(
         child: ListView(children: [
-          // ここから下が修正箇所
           TodoCardWidget(label: "TODO 1"),
           TodoCardWidget(label: "TODO 2"),
           TodoCardWidget(label: "TODO 3"),
@@ -43,11 +42,26 @@ class MyHomePage extends StatelessWidget {
 }
 
 ////////////////////
-// ④ TodoCardのWidget
-class TodoCardWidget extends StatelessWidget {
+/// ⑤ StatefulWidget本体
+class TodoCardWidget extends StatefulWidget {
+  
   final String label;
+  var state = false;
+  
+  TodoCardWidget({Key? key, required this.label}) : super(key: key);
 
-  TodoCardWidget({Key? key, required this.label});
+  @override
+  _TodoCardWidgetState createState() => _TodoCardWidgetState();
+}
+
+/// ⑥ TodoCardWidgetの状態
+class _TodoCardWidgetState extends State<TodoCardWidget> {
+  
+  void _changeState(value) {
+    setState(() {
+      widget.state = value ?? false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,8 +71,8 @@ class TodoCardWidget extends StatelessWidget {
         padding: EdgeInsets.all(10),
         child: Row(
           children: [
-            Checkbox(onChanged: null, value: false),
-            Text(this.label),
+            Checkbox(onChanged: _changeState, value: widget.state),
+            Text(widget.label),
           ],
         ),
       ),
