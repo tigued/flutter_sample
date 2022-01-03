@@ -1,6 +1,5 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
-// ①　必要なライブラリをインポート
 import 'package:shared_preferences/shared_preferences.dart';
 
 ///////////////////////////////
@@ -16,8 +15,6 @@ class MyApp extends StatelessWidget {
 
 ///////////////////////////////
 class MyHomePage extends StatefulWidget {
-  List<Widget> cards = [];
-
   MyHomePage({Key? key}) : super(key: key);
 
   @override
@@ -25,23 +22,27 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  // ② Widgetを初期化した際に呼ばれる`initState()`を上書き
   @override
   void initState() {
     super.initState();
-
-    // ③ SharedPreferencesのインスタンスを取得し、
-    // SharedPreferencesに保存されているリストを取得
-    SharedPreferences.getInstance().then((prefs) {
-      var todo = prefs.getStringList("todo") ?? [];
-      for (var v in todo) {
-        setState(() {
-          // ④ 保存されている場合は、widgetのリストに追加
-          widget.cards.add(TodoCardWidget(label: v));
-        });
-      }
-    });
   }
+
+  /// ---- ① 非同期にカードリストを生成する関数 ----
+  Future<List<dynamic>> getCards() async {
+    var prefs = await SharedPreferences.getInstance();
+    List<Widget> cards = [];
+    var todo = prefs.getStringList("todo") ?? [];
+    for (var jsonStr in todo) {
+      // JSON形式の文字列から辞書形式のオブジェクトに変換し、各要素を取り出し
+      var mapObj = jsonDecode(jsonStr);
+      var title = mapObj['title'];
+      var state = mapObj['state'];
+      cards.add(TodoCardWidget(label: title, state: state));
+    }
+    return cards;
+  }
+
+  /// ------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -49,43 +50,60 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: const Text("My TODO"),
         actions: [
-          // ⑦ナビゲーションバーの右上にゴミ箱ボタンを設置
           IconButton(
               onPressed: () {
-                // ⑧ 押された場合は、保存されているTODOを全て削除
                 SharedPreferences.getInstance().then((prefs) async {
                   await prefs.setStringList("todo", []);
-                  setState(() {
-                    widget.cards = [];
-                  });
+                  setState(() {});
                 });
               },
-              icon: Icon(Icons.delete))
+              icon: const Icon(Icons.delete))
         ],
       ),
       body: Center(
-        child: ListView.builder(
-          itemCount: widget.cards.length,
-          itemBuilder: (BuildContext context, int index) {
-            return widget.cards[index];
+        /// ---- ② 非同期にカードリストを更新するには、FutureBuilder を使います----
+        child: FutureBuilder<List>(
+          future: getCards(), // <--- getCards()メソッドの実行状態をモニタリングする
+          builder: (BuildContext context, AsyncSnapshot<List> snapshot) {
+            switch (snapshot.connectionState) {
+              case ConnectionState.none:
+                return const Text('Waiting to start');
+              case ConnectionState.waiting:
+                return const Text('Loading...');
+              default:
+                // getCards()メソッドの処理が完了すると、ここが呼ばれる。
+                if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
+                } else {
+                  return ListView.builder(
+                      // リストの中身は、snapshot.dataの中に保存されているので、
+                      // 取り出して活用する
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        return snapshot.data![index];
+                      });
+                }
+            }
           },
         ),
+
+        /// ------------------------------------
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          // ⑤ TextInputDialogを用いて、任意の文字列を取得する。
           var label = await _showTextInputDialog(context);
 
           if (label != null) {
-            setState(() {
-              widget.cards.add(TodoCardWidget(label: label));
-            });
-
-            // ⑥ SharedPreferencesのインスタンスを取得し、追加する。
             SharedPreferences prefs = await SharedPreferences.getInstance();
             var todo = prefs.getStringList("todo") ?? [];
-            todo.add(label);
+
+            // 辞書型オブジェクトを生成し、JSON形式の文字列に変換して保存
+            var mapObj = {"title": label, "state": false};
+            var jsonStr = jsonEncode(mapObj);
+            todo.add(jsonStr);
             await prefs.setStringList("todo", todo);
+
+            setState(() {});
           }
         },
         child: const Icon(Icons.add),
@@ -112,7 +130,8 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               ElevatedButton(
                 child: const Text('OK'),
-                onPressed: () => Navigator.pop(context, _textFieldController.text),
+                onPressed: () =>
+                    Navigator.pop(context, _textFieldController.text),
               ),
             ],
           );
@@ -123,19 +142,40 @@ class _MyHomePageState extends State<MyHomePage> {
 ////////////////////
 class TodoCardWidget extends StatefulWidget {
   final String label;
+  // 真偽値（Boolen）型のstateを外部からアクセスできるように修正
   var state = false;
 
-  TodoCardWidget({Key? key, required this.label}) : super(key: key);
+  TodoCardWidget({
+    Key? key,
+    required this.label,
+    required this.state,
+  }) : super(key: key);
 
   @override
   _TodoCardWidgetState createState() => _TodoCardWidgetState();
 }
 
 class _TodoCardWidgetState extends State<TodoCardWidget> {
-  void _changeState(value) {
+  void _changeState(value) async {
     setState(() {
       widget.state = value ?? false;
     });
+
+    // --- ③ ボタンが押されたタイミング状態を更新し保存する ---
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    var todo = prefs.getStringList("todo") ?? [];
+
+    for (int i = 0; i < todo.length; i++) {
+      var mapObj = jsonDecode(todo[i]);
+      if (mapObj["title"] == widget.label) {
+        mapObj["state"] = widget.state;
+        todo[i] = jsonEncode(mapObj);
+      }
+    }
+
+    prefs.setStringList("todo", todo);
+
+    /// ------------------------------------
   }
 
   @override
